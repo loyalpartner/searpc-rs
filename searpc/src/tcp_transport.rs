@@ -1,7 +1,7 @@
 //! TCP transport with packet protocol
 //!
 //! Packet format (matching libsearpc demo):
-//! ```
+//! ```text
 //! ┌─────────────┬──────────────────┐
 //! │ Length(2B)  │  JSON Data       │
 //! │ (uint16_t)  │  (variable)      │

@@ -1,7 +1,7 @@
 //! Unix Domain Socket transport with 32-bit length header
 //!
 //! This matches the production protocol used by Seafile:
-//! ```
+//! ```text
 //! ┌─────────────┬──────────────────┐
 //! │ Length(4B)  │  Wrapped JSON    │
 //! │ (uint32)    │  (variable)      │
