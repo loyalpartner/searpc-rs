@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: 'Release level (patch/minor/major)'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: 'patch'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  release:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # Required for Trusted Publishing
+      contents: write   # Required for pushing tags
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 需要完整历史来创建 tag
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-release
+        run: cargo install cargo-release
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # 方式 1: Trusted Publishing (推荐)
+      # 注意: 需要先在 crates.io 上配置 Trusted Publisher
+      # 访问: https://crates.io/settings/tokens
+      - name: Authenticate with crates.io (Trusted Publishing)
+        uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+        continue-on-error: true
+
+      # 方式 2: 传统 Token (备选)
+      # 如果 Trusted Publishing 失败，使用存储在 GitHub Secrets 的 token
+      # 创建 secret: Settings → Secrets → Actions → New repository secret
+      # 名称: CARGO_TOKEN
+      # 值: 从 crates.io 获取的 API token
+
+      - name: Run tests before release
+        run: cargo test --all-features
+
+      - name: Release to crates.io
+        env:
+          # 优先使用 Trusted Publishing token，如果失败则使用传统 token
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token || secrets.CARGO_TOKEN }}
+        run: |
+          cargo release ${{ inputs.level }} \
+            --workspace \
+            --execute \
+            --no-confirm \
+            --no-verify
+
+      # cargo-release 已经创建并推送了 tag
+      # 这里可选：创建 GitHub Release 页面
+      # - name: Create GitHub Release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     tag_name: v0.1.2  # 需要动态计算版本号
+      #     generate_release_notes: true
