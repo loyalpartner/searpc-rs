@@ -80,6 +80,12 @@ impl<T: Transport> SearpcClient<T> {
     /// Call function expecting objlist return type (returns Vec of JSON Values)
     pub fn call_objlist(&mut self, function_name: &str, args: Vec<Arg>) -> Result<Vec<Value>> {
         let value = self.call(function_name, args)?;
+
+        // Handle null as empty array (Seafile daemon returns null for empty lists)
+        if value.is_null() {
+            return Ok(Vec::new());
+        }
+
         value.as_array()
             .map(|arr| arr.clone())
             .ok_or_else(|| SearpcError::TypeError(

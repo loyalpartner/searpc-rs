@@ -103,20 +103,26 @@ impl UnixSocketTransport {
 
     /// Wrap RPC request in service envelope
     ///
-    /// Input: ["function_name", arg1, arg2, ...]
-    /// Output: {"service": "xxx", "request": ["function_name", arg1, ...]}
+    /// Input: ["function_name", arg1, arg2, ...]  (as JSON string)
+    /// Output: {"service": "xxx", "request": "[\"function_name\",arg1,...]"}  (request as STRING)
+    ///
+    /// IMPORTANT: The 'request' field must be a JSON-encoded STRING, not a JSON object!
+    /// This matches Python's pysearpc implementation:
+    ///   json.dumps({'service': service, 'request': fcall_str})
+    /// where fcall_str is already a JSON string like '["func",arg1,arg2]'
     fn wrap_request(&self, rpc_request: &[u8]) -> Result<Vec<u8>> {
-        use serde_json::{json, Value};
+        use serde_json::json;
 
         let request_str = std::str::from_utf8(rpc_request).map_err(|e| {
             SearpcError::InvalidResponse(format!("Request is not valid UTF-8: {}", e))
         })?;
 
-        let request_json: Value = serde_json::from_str(request_str)?;
-
+        // CRITICAL: Keep request as a string, don't parse it as JSON!
+        // The server expects: {"service":"...", "request":"[...]"}
+        // NOT: {"service":"...", "request":[...]}
         let wrapped = json!({
             "service": &self.service,
-            "request": request_json
+            "request": request_str  // Pass as string, not parsed JSON
         });
 
         Ok(serde_json::to_vec(&wrapped)?)

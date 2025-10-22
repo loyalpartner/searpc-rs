@@ -74,9 +74,12 @@ impl RpcResponse {
             });
         }
 
-        self.ret.ok_or_else(|| {
-            SearpcError::InvalidResponse("Response has no 'ret' field".to_string())
-        })
+        // ret can be None (when key missing) or Some(Value::Null)
+        // Both cases are valid - treat null as a valid empty result
+        match self.ret {
+            None => Ok(Value::Null),
+            Some(v) => Ok(v),
+        }
     }
 }
 

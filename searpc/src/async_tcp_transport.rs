@@ -105,8 +105,6 @@ impl AsyncTransport for AsyncTcpTransport {
 
 #[cfg(all(test, feature = "async"))]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_packet_encoding() {
         // Test that packet length is encoded as big-endian

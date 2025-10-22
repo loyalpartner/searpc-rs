@@ -1,5 +1,5 @@
 [workspace]
-members = [
+members = ["seaf-cli",
     "searpc",
     "searpc-macro",
 ]
