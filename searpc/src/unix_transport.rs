@@ -168,6 +168,7 @@ mod tests {
         let wrapped_str = std::str::from_utf8(&wrapped).unwrap();
 
         assert!(wrapped_str.contains("\"service\":\"test-service\""));
-        assert!(wrapped_str.contains("\"request\":[\"get_version\"]"));
+        // request 字段是 JSON 字符串，不是直接的数组
+        assert!(wrapped_str.contains("\"request\":\"[\\\"get_version\\\"]\""));
     }
 }

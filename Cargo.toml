@@ -1,11 +1,46 @@
 [workspace]
-members = ["seaf-cli",
-    "searpc",
-    "searpc-macro",
-]
+members = ["searpc-macro", "searpc", "seaf-cli"]
 resolver = "2"
 
+# 统一版本和元数据管理
+[workspace.package]
+version = "0.1.0"
+authors = ["Lee <lee@example.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/loyalpartner/searpc-rs"
+edition = "2021"
+
+# 统一依赖管理
 [workspace.dependencies]
+# 外部依赖
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
+tokio = { version = "1.41", features = ["net", "io-util", "rt"] }
+async-trait = "0.1"
+clap = { version = "4", features = ["derive"] }
+anyhow = "1.0"
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+
+# 内部依赖（workspace 成员）
+searpc-macro = { path = "./searpc-macro", version = "0.1.0" }
+searpc = { path = "./searpc", version = "0.1.0", default-features = false }
+
+# cargo-release 配置
+[workspace.metadata.release]
+# 所有 crate 共享版本号
+shared-version = true
+# 依赖自动升级
+dependent-version = "upgrade"
+# 统一 commit（一次发布 = 一个 commit）
+consolidate-commits = true
+# 自动推送
+push = true
+# 发布前验证
+verify = true
+# Tag 配置
+tag-prefix = "v"
+tag-name = "v{{version}}"
+tag-message = "Release {{version}}"
