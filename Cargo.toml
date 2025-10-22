@@ -9,6 +9,7 @@ authors = ["Lee <lee@example.com>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/loyalpartner/searpc-rs"
 edition = "2021"
+rust-version = "1.70"  # tokio 1.41 requires Rust 1.70
 
 # 统一依赖管理
 [workspace.dependencies]

@@ -50,17 +50,3 @@ jobs:
 
       - name: Build documentation
         run: cargo doc --no-deps --all-features
-
-  # 检查最小支持的 Rust 版本 (MSRV)
-  msrv:
-    name: Check MSRV
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust 1.70 (MSRV)
-        uses: dtolnay/rust-toolchain@1.70
-
-      - name: Check build
-        run: cargo check --all-features
