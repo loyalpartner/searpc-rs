@@ -40,6 +40,8 @@ consolidate-commits = true
 push = true
 # 发布前验证
 verify = true
+# 使用官方 crates.io（不使用镜像）
+registry = "crates-io"
 # Tag 配置
 tag-prefix = "v"
 tag-name = "v{{version}}"
