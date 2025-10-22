@@ -1,0 +1,26 @@
+[package]
+name = "searpc"
+version = "0.1.0"
+edition = "2021"
+authors = ["Lee <lee@example.com>"]
+description = "Rust client for Searpc RPC framework (Seafile-compatible)"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/haiwen/searpc-rs"
+keywords = ["rpc", "seafile", "searpc"]
+categories = ["network-programming", "api-bindings"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+# Async support (optional, enabled by default)
+tokio = { version = "1.41", features = ["net", "io-util", "rt"], optional = true }
+async-trait = { version = "0.1", optional = true }
+
+[features]
+default = ["async"]
+async = ["tokio", "async-trait"]
+
+[dev-dependencies]
+tokio = { version = "1.41", features = ["macros", "rt-multi-thread"] }
