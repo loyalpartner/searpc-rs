@@ -23,18 +23,21 @@ Make it work → Make it right → Make it fast
 ```
 
 Phase 1 (✅ **DONE**): Core protocol that works with existing C/Python servers
-Phase 2 (Future): High-level macro API for convenience
-Phase 3 (Future): Async support with tokio
+Phase 2 (✅ **DONE**): Type-safe macro API for convenience
+Phase 3 (✅ **DONE**): Async support with tokio
 
 ## Features
 
 - ✅ **Protocol-compatible** with libsearpc C and Python implementations
+- ✅ **Type-safe macro API**: `#[rpc]` trait-based client generation
+- ✅ **Async support**: Full tokio integration (optional)
 - ✅ **Two transport layers**:
   - `TcpTransport`: 16-bit length header (for demo compatibility)
   - `UnixSocketTransport`: 32-bit length header (for Seafile production)
 - ✅ **All RPC types supported**: `int`, `int64`, `string`, `object`, `objlist`, `json`
+- ✅ **Auto-deserialization**: JSON → custom types via serde
 - ✅ **Zero unsafe code**
-- ✅ **Comprehensive tests**
+- ✅ **Comprehensive examples**
 
 ## Quick Start
 
@@ -74,7 +77,62 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### Type-safe Calls
+### Macro-based API (Recommended)
+
+The `#[rpc]` macro provides complete type safety with automatic serialization/deserialization.
+
+**DRY Principle**: Use `prefix` to avoid repeating function name prefixes!
+
+```rust
+use searpc::{rpc, Result, SearpcClient, TcpTransport};
+use serde::Deserialize;
+
+// Define your data types
+#[derive(Deserialize)]
+struct Repo {
+    id: String,
+    name: String,
+    owner: String,
+}
+
+// Define the RPC interface with prefix
+#[rpc(prefix = "seafile")]
+trait SeafileRpc {
+    fn get_version(&mut self) -> Result<String>;
+    // Automatically calls: seafile_get_version
+
+    fn list_repos(&mut self, offset: i32, limit: i32) -> Result<Vec<Repo>>;
+    // Automatically calls: seafile_list_repos
+
+    #[rpc(name = "get_commit")]  // Can still override
+    fn get_specific_commit(&mut self, id: &str) -> Result<Commit>;
+    // Calls: get_commit (not seafile_get_specific_commit)
+}
+
+// Use it with compile-time type checking!
+let transport = TcpTransport::connect("127.0.0.1:12345")?;
+let mut client = SearpcClient::new(transport);
+
+let version: String = client.get_version()?;  // → seafile_get_version
+let repos: Vec<Repo> = client.list_repos(0, 100)?;  // → seafile_list_repos
+
+// Compiler ensures:
+// - Correct parameter types (i32, &str, etc.)
+// - Correct return types (String, Vec<Repo>)
+// - Auto-deserialization from JSON
+```
+
+**Benefits**:
+- ✅ **DRY**: Prefix defined once, not repeated for every method
+- ✅ **Type safety**: Compiler catches parameter/return type errors
+- ✅ **Auto-deserialization**: `Vec<Value>` → `Vec<Repo>` automatically
+- ✅ **Clean API**: No manual `Arg` construction
+- ✅ **IDE support**: Full autocomplete and documentation
+- ✅ **Flexibility**: Can override individual method names with `#[rpc(name = "...")]`
+
+### Manual API (Still Available)
+
+For maximum control, use the manual API:
 
 ```rust
 // int return type
@@ -85,13 +143,13 @@ let name: String = client.call_string("get_repo_name", vec![
     Arg::string("repo-id-here")
 ])?;
 
-// object return type
+// object return type (returns JSON Value)
 let repo = client.call_object("get_repo", vec![
     Arg::string("repo-id")
 ])?;
 
-// objlist return type
-let repos: Vec<serde_json::Value> = client.call_objlist("list_repos", vec![])?;
+// objlist return type (returns Vec<Value>)
+let repos: Vec<Value> = client.call_objlist("list_repos", vec![])?;
 ```
 
 ## Architecture
@@ -151,19 +209,26 @@ let repos: Vec<serde_json::Value> = client.call_objlist("list_repos", vec![])?;
 
 ```
 searpc-rs/
-├── searpc-core/          # Core protocol implementation
+├── searpc/                       # Main crate (re-exports everything)
 │   ├── src/
-│   │   ├── protocol.rs   # JSON request/response serialization
-│   │   ├── types.rs      # Arg enum (replaces C's string types)
-│   │   ├── client.rs     # SearpcClient with typed methods
-│   │   ├── transport.rs  # Transport trait
-│   │   ├── tcp_transport.rs    # 16-bit header transport
-│   │   └── unix_transport.rs   # 32-bit header transport
+│   │   ├── protocol.rs          # JSON request/response serialization
+│   │   ├── types.rs             # Arg enum + IntoArg trait
+│   │   ├── client.rs            # SearpcClient with typed methods
+│   │   ├── transport.rs         # Transport trait
+│   │   ├── tcp_transport.rs     # 16-bit header transport
+│   │   ├── unix_transport.rs    # 32-bit header transport (Unix only)
+│   │   ├── async_client.rs      # Async RPC client (tokio)
+│   │   ├── async_transport.rs   # Async transport trait
+│   │   └── async_tcp_transport.rs
+│   ├── examples/
+│   │   ├── demo_client.rs       # Manual API example
+│   │   ├── typed_client.rs      # Macro API example
+│   │   └── async_demo_client.rs # Async API example
 │   └── Cargo.toml
-├── searpc-macro/         # Future: proc macros for convenience
-├── searpc/               # Future: high-level API
-└── examples/
-    └── demo_client.rs    # Example connecting to libsearpc demo server
+├── searpc-macro/                 # Procedural macros (#[rpc])
+│   ├── src/lib.rs               # Macro implementation (~350 lines)
+│   └── Cargo.toml
+└── README.md
 ```
 
 ## Compatibility
@@ -211,23 +276,31 @@ cargo run --example demo_client
 
 ## Roadmap
 
-- [x] Phase 1: Core protocol (MVP)
+- [x] **Phase 1: Core Protocol** (DONE)
   - [x] JSON serialization/deserialization
-  - [x] Client implementation
-  - [x] All RPC types
-  - [x] TCP transport (demo)
-  - [x] Unix socket transport (production)
+  - [x] Client implementation with all RPC types
+  - [x] TCP transport (16-bit header, demo compatible)
+  - [x] Unix socket transport (32-bit header, Seafile production)
+  - [x] Comprehensive error handling
 
-- [ ] Phase 2: Ergonomics
-  - [ ] Procedural macros for function definitions
-  - [ ] Better error types
+- [x] **Phase 2: Type Safety & Ergonomics** (DONE)
+  - [x] `#[rpc]` procedural macro for trait-based clients
+  - [x] Auto-deserialization to custom types via serde
+  - [x] `IntoArg` trait for parameter conversion
+  - [x] Type-safe examples and documentation
+
+- [x] **Phase 3: Async Support** (DONE)
+  - [x] Async RPC client with tokio
+  - [x] Async TCP transport
+  - [x] Optional feature flags (`async`, `macro`)
+  - [x] Async examples
+
+- [ ] **Phase 4: Production Features** (Future)
   - [ ] Connection pooling
-
-- [ ] Phase 3: Production Features
-  - [ ] Async support (tokio)
-  - [ ] Timeouts and retries
+  - [ ] Timeout and retry mechanisms
   - [ ] Server implementation
   - [ ] Performance benchmarks
+  - [ ] Comprehensive integration tests with Seafile
 
 ## License
 

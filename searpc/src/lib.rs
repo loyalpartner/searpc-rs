@@ -167,7 +167,7 @@ pub mod async_client;
 pub mod async_tcp_transport;
 
 pub use protocol::{RpcRequest, RpcResponse};
-pub use types::Arg;
+pub use types::{Arg, IntoArg};
 pub use client::SearpcClient;
 pub use error::{SearpcError, Result};
 pub use transport::Transport;
@@ -183,3 +183,7 @@ pub use async_transport::AsyncTransport;
 pub use async_client::AsyncSearpcClient;
 #[cfg(feature = "async")]
 pub use async_tcp_transport::AsyncTcpTransport;
+
+// Proc-macro exports
+#[cfg(feature = "macro")]
+pub use searpc_macro::rpc;

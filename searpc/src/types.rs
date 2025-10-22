@@ -76,6 +76,44 @@ impl From<Value> for Arg {
     }
 }
 
+/// Trait for types that can be converted into RPC arguments
+///
+/// This trait is used by the `#[rpc]` macro to automatically convert
+/// function parameters into `Arg` enum variants.
+pub trait IntoArg {
+    fn into_arg(self) -> Arg;
+}
+
+impl IntoArg for i32 {
+    fn into_arg(self) -> Arg {
+        Arg::Int(self)
+    }
+}
+
+impl IntoArg for i64 {
+    fn into_arg(self) -> Arg {
+        Arg::Int64(self)
+    }
+}
+
+impl IntoArg for &str {
+    fn into_arg(self) -> Arg {
+        Arg::String(self.to_string())
+    }
+}
+
+impl IntoArg for String {
+    fn into_arg(self) -> Arg {
+        Arg::String(self)
+    }
+}
+
+impl IntoArg for Value {
+    fn into_arg(self) -> Arg {
+        Arg::Json(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -18,9 +18,13 @@ thiserror = { workspace = true }
 tokio = { version = "1.41", features = ["net", "io-util", "rt"], optional = true }
 async-trait = { version = "0.1", optional = true }
 
+# Proc-macro support (optional, enabled by default)
+searpc-macro = { path = "../searpc-macro", optional = true }
+
 [features]
-default = ["async"]
+default = ["async", "macro"]
 async = ["tokio", "async-trait"]
+macro = ["searpc-macro"]
 
 [dev-dependencies]
 tokio = { version = "1.41", features = ["macros", "rt-multi-thread"] }
