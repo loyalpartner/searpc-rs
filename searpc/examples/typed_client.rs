@@ -1,18 +1,18 @@
-///! Type-safe RPC client example using the #[rpc] macro
-///!
-///! This example demonstrates the macro-based API with full type safety.
-///!
-///! First, run the C demo server from libsearpc/demo:
-///! ```bash
-///! cd libsearpc/demo
-///! make
-///! ./searpc-demo-server
-///! ```
-///!
-///! Then run this client:
-///! ```bash
-///! cargo run --example typed_client
-///! ```
+//! Type-safe RPC client example using the #[rpc] macro
+//!
+//! This example demonstrates the macro-based API with full type safety.
+//!
+//! First, run the C demo server from libsearpc/demo:
+//! ```bash
+//! cd libsearpc/demo
+//! make
+//! ./searpc-demo-server
+//! ```
+//!
+//! Then run this client:
+//! ```bash
+//! cargo run --example typed_client
+//! ```
 use searpc::{rpc, Result, SearpcClient, TcpTransport};
 use serde::Deserialize;
 

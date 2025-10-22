@@ -1,16 +1,16 @@
-///! Async example client to connect to libsearpc demo server
-///!
-///! First, compile and run the C demo server from libsearpc/demo:
-///! ```bash
-///! cd libsearpc/demo
-///! make
-///! ./searpc-demo-server
-///! ```
-///!
-///! Then run this async client:
-///! ```bash
-///! cargo run --example async_demo_client
-///! ```
+//! Async example client to connect to libsearpc demo server
+//!
+//! First, compile and run the C demo server from libsearpc/demo:
+//! ```bash
+//! cd libsearpc/demo
+//! make
+//! ./searpc-demo-server
+//! ```
+//!
+//! Then run this async client:
+//! ```bash
+//! cargo run --example async_demo_client
+//! ```
 use searpc::{Arg, AsyncSearpcClient, AsyncTcpTransport};
 
 #[tokio::main]

@@ -1,27 +1,28 @@
+//! Unix Domain Socket transport with 32-bit length header
+//!
+//! This matches the production protocol used by Seafile:
+//! ```
+//! ┌─────────────┬──────────────────┐
+//! │ Length(4B)  │  Wrapped JSON    │
+//! │ (uint32)    │  (variable)      │
+//! └─────────────┴──────────────────┘
+//! ```
+//!
+//! The wrapped JSON contains:
+//! ```json
+//! {
+//!   "service": "service-name",
+//!   "request": ["function_name", arg1, arg2, ...]
+//! }
+//! ```
+//!
+//! And the response is still the standard format:
+//! ```json
+//! {"ret": value, "err_code": code, "err_msg": msg}
+//! ```
+
 use crate::error::{Result, SearpcError};
 use crate::transport::Transport;
-///! Unix Domain Socket transport with 32-bit length header
-///!
-///! This matches the production protocol used by Seafile:
-///! ```
-///! ┌─────────────┬──────────────────┐
-///! │ Length(4B)  │  Wrapped JSON    │
-///! │ (uint32)    │  (variable)      │
-///! └─────────────┴──────────────────┘
-///! ```
-///!
-///! The wrapped JSON contains:
-///! ```json
-///! {
-///!   "service": "service-name",
-///!   "request": ["function_name", arg1, arg2, ...]
-///! }
-///! ```
-///!
-///! And the response is still the standard format:
-///! ```json
-///! {"ret": value, "err_code": code, "err_msg": msg}
-///! ```
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::path::Path;

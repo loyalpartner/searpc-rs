@@ -1,4 +1,4 @@
-///! Minimal test for the #[rpc] macro with prefix
+//! Minimal test for the #[rpc] macro with prefix
 use searpc::{rpc, Result, SearpcClient, TcpTransport};
 
 // Using prefix - no need to repeat "my_service_" everywhere!

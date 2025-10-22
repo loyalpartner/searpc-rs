@@ -1,15 +1,16 @@
+//! TCP transport with packet protocol
+//!
+//! Packet format (matching libsearpc demo):
+//! ```
+//! ┌─────────────┬──────────────────┐
+//! │ Length(2B)  │  JSON Data       │
+//! │ (uint16_t)  │  (variable)      │
+//! └─────────────┴──────────────────┘
+//! ```
+//! Length is in network byte order (big-endian)
+
 use crate::error::{Result, SearpcError};
 use crate::transport::Transport;
-///! TCP transport with packet protocol
-///!
-///! Packet format (matching libsearpc demo):
-///! ```
-///! ┌─────────────┬──────────────────┐
-///! │ Length(2B)  │  JSON Data       │
-///! │ (uint16_t)  │  (variable)      │
-///! └─────────────┴──────────────────┘
-///! ```
-///! Length is in network byte order (big-endian)
 use std::io::{Read, Write};
 use std::net::TcpStream;
 

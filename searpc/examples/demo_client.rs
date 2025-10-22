@@ -1,16 +1,16 @@
-///! Example client to connect to libsearpc demo server
-///!
-///! First, compile and run the C demo server from libsearpc/demo:
-///! ```bash
-///! cd libsearpc/demo
-///! make
-///! ./searpc-demo-server
-///! ```
-///!
-///! Then run this client:
-///! ```bash
-///! cargo run --example demo_client
-///! ```
+//! Example client to connect to libsearpc demo server
+//!
+//! First, compile and run the C demo server from libsearpc/demo:
+//! ```bash
+//! cd libsearpc/demo
+//! make
+//! ./searpc-demo-server
+//! ```
+//!
+//! Then run this client:
+//! ```bash
+//! cargo run --example demo_client
+//! ```
 use searpc::{Arg, SearpcClient, TcpTransport};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

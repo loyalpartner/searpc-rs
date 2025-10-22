@@ -86,7 +86,7 @@ impl<T: Transport> SearpcClient<T> {
 
         value
             .as_array()
-            .map(|arr| arr.clone())
+            .cloned()
             .ok_or_else(|| SearpcError::TypeError(format!("Expected array, got: {:?}", value)))
     }
 

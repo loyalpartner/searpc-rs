@@ -135,7 +135,7 @@ impl<T: AsyncTransport> AsyncSearpcClient<T> {
         let value = response.into_result()?;
         value
             .as_array()
-            .map(|arr| arr.clone())
+            .cloned()
             .ok_or_else(|| crate::SearpcError::TypeError("Expected array".to_string()))
     }
 
