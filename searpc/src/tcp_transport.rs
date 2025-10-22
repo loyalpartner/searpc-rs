@@ -1,3 +1,5 @@
+use crate::error::{Result, SearpcError};
+use crate::transport::Transport;
 ///! TCP transport with packet protocol
 ///!
 ///! Packet format (matching libsearpc demo):
@@ -8,11 +10,8 @@
 ///! └─────────────┴──────────────────┘
 ///! ```
 ///! Length is in network byte order (big-endian)
-
 use std::io::{Read, Write};
 use std::net::TcpStream;
-use crate::error::{SearpcError, Result};
-use crate::transport::Transport;
 
 const MAX_PACKET_SIZE: usize = 65535; // uint16 max
 
@@ -33,24 +32,26 @@ impl TcpTransport {
 
     /// Read exactly n bytes
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
-        self.stream.read_exact(buf).map_err(|e| {
-            SearpcError::TransportError(format!("Read failed: {}", e))
-        })
+        self.stream
+            .read_exact(buf)
+            .map_err(|e| SearpcError::TransportError(format!("Read failed: {}", e)))
     }
 
     /// Write all bytes
     fn write_all(&mut self, buf: &[u8]) -> Result<()> {
-        self.stream.write_all(buf).map_err(|e| {
-            SearpcError::TransportError(format!("Write failed: {}", e))
-        })
+        self.stream
+            .write_all(buf)
+            .map_err(|e| SearpcError::TransportError(format!("Write failed: {}", e)))
     }
 
     /// Send a packet
     fn send_packet(&mut self, data: &[u8]) -> Result<()> {
         if data.len() > MAX_PACKET_SIZE {
-            return Err(SearpcError::TransportError(
-                format!("Packet too large: {} > {}", data.len(), MAX_PACKET_SIZE)
-            ));
+            return Err(SearpcError::TransportError(format!(
+                "Packet too large: {} > {}",
+                data.len(),
+                MAX_PACKET_SIZE
+            )));
         }
 
         // Write length (2 bytes, big-endian)
@@ -72,7 +73,7 @@ impl TcpTransport {
 
         if len == 0 {
             return Err(SearpcError::TransportError(
-                "Received packet with zero length".to_string()
+                "Received packet with zero length".to_string(),
             ));
         }
 

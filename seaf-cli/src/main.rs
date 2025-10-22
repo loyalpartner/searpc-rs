@@ -60,9 +60,7 @@ fn main() -> Result<()> {
 
     // Read seafile.ini to get socket path
     let seafile_ini = conf_dir.join("seafile.ini");
-    let seafile_datadir = std::fs::read_to_string(&seafile_ini)?
-        .trim()
-        .to_string();
+    let seafile_datadir = std::fs::read_to_string(&seafile_ini)?.trim().to_string();
 
     let socket_path = PathBuf::from(&seafile_datadir).join("seafile.sock");
 
@@ -100,8 +98,10 @@ fn main() -> Result<()> {
                                 0.0
                             };
                             let rate = tx_task.rate as f64 / 1024.0;
-                            println!("{:<50}\t{:<20}\t{:.1}%, {:.1}KB/s",
-                                task.repo_name, "downloading", progress, rate);
+                            println!(
+                                "{:<50}\t{:<20}\t{:.1}%, {:.1}KB/s",
+                                task.repo_name, "downloading", progress, rate
+                            );
                         }
                     }
                     "error" => {
@@ -127,29 +127,29 @@ fn main() -> Result<()> {
                 }
 
                 match client.get_repo_sync_task(&repo.id) {
-                    Ok(Some(task)) => {
-                        match task.state.as_str() {
-                            "uploading" | "downloading" => {
-                                if let Ok(tx_task) = client.find_transfer_task(&repo.id) {
-                                    let progress = if tx_task.block_total > 0 {
-                                        (tx_task.block_done as f64 / tx_task.block_total as f64) * 100.0
-                                    } else {
-                                        0.0
-                                    };
-                                    let rate = tx_task.rate as f64 / 1024.0;
-                                    println!("{:<50}\t{:<20}\t{:.1}%, {:.1}KB/s",
-                                        repo.name, task.state, progress, rate);
-                                }
-                            }
-                            "error" => {
-                                let err = client.sync_error_id_to_str(task.error)?;
-                                println!("{:<50}\t{:<20}\t{:<20}", repo.name, "error", err);
-                            }
-                            _ => {
-                                println!("{:<50}\t{:<20}", repo.name, task.state);
+                    Ok(Some(task)) => match task.state.as_str() {
+                        "uploading" | "downloading" => {
+                            if let Ok(tx_task) = client.find_transfer_task(&repo.id) {
+                                let progress = if tx_task.block_total > 0 {
+                                    (tx_task.block_done as f64 / tx_task.block_total as f64) * 100.0
+                                } else {
+                                    0.0
+                                };
+                                let rate = tx_task.rate as f64 / 1024.0;
+                                println!(
+                                    "{:<50}\t{:<20}\t{:.1}%, {:.1}KB/s",
+                                    repo.name, task.state, progress, rate
+                                );
                             }
                         }
-                    }
+                        "error" => {
+                            let err = client.sync_error_id_to_str(task.error)?;
+                            println!("{:<50}\t{:<20}\t{:<20}", repo.name, "error", err);
+                        }
+                        _ => {
+                            println!("{:<50}\t{:<20}", repo.name, task.state);
+                        }
+                    },
                     Ok(None) => {
                         println!("{:<50}\t{:<20}", repo.name, "waiting for sync");
                     }

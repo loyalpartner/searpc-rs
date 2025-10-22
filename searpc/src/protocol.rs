@@ -1,7 +1,7 @@
+use crate::error::{Result, SearpcError};
+use crate::types::Arg;
 use serde::Deserialize;
 use serde_json::Value;
-use crate::types::Arg;
-use crate::error::{SearpcError, Result};
 
 /// RPC Request
 ///

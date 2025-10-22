@@ -11,8 +11,7 @@
 ///! ```bash
 ///! cargo run --example async_demo_client
 ///! ```
-
-use searpc::{AsyncSearpcClient, AsyncTcpTransport, Arg};
+use searpc::{Arg, AsyncSearpcClient, AsyncTcpTransport};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,9 +47,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client2 = AsyncSearpcClient::new(transport2);
 
     let args2 = vec![
-        Arg::int(4),                    // count
-        Arg::int(11),                   // len
-        Arg::string("A rpc test."),     // str
+        Arg::int(4),                // count
+        Arg::int(11),               // len
+        Arg::string("A rpc test."), // str
     ];
 
     match client2.call_objlist("searpc_objlisttest", args2).await {

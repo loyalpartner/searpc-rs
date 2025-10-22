@@ -13,7 +13,6 @@
 ///! ```bash
 ///! cargo run --example typed_client
 ///! ```
-
 use searpc::{rpc, Result, SearpcClient, TcpTransport};
 use serde::Deserialize;
 
@@ -73,8 +72,10 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         Ok(objects) => {
             println!("✓ Result: Got {} objects", objects.len());
             for (i, obj) in objects.iter().enumerate() {
-                println!("  Object {}: count={}, len={}, str={}",
-                    i, obj.count, obj.len, obj.str);
+                println!(
+                    "  Object {}: count={}, len={}, str={}",
+                    i, obj.count, obj.len, obj.str
+                );
             }
             if objects.len() == 4 {
                 println!("✓ Test PASSED!");

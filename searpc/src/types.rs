@@ -127,11 +127,7 @@ mod tests {
 
     #[test]
     fn test_arg_serialization() {
-        let args = vec![
-            Arg::int(42),
-            Arg::string("test"),
-            Arg::int64(9999),
-        ];
+        let args = vec![Arg::int(42), Arg::string("test"), Arg::int64(9999)];
 
         let json = serde_json::to_string(&args).unwrap();
         assert_eq!(json, r#"[42,"test",9999]"#);
@@ -139,11 +135,7 @@ mod tests {
 
     #[test]
     fn test_arg_null() {
-        let args = vec![
-            Arg::int(42),
-            Arg::null(),
-            Arg::string("test"),
-        ];
+        let args = vec![Arg::int(42), Arg::null(), Arg::string("test")];
 
         let json = serde_json::to_string(&args).unwrap();
         assert_eq!(json, r#"[42,null,"test"]"#);

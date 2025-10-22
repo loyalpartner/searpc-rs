@@ -1,5 +1,4 @@
 ///! Minimal test for the #[rpc] macro with prefix
-
 use searpc::{rpc, Result, SearpcClient, TcpTransport};
 
 // Using prefix - no need to repeat "my_service_" everywhere!
@@ -8,7 +7,7 @@ trait SimpleRpc {
     fn test(&mut self, value: i32) -> Result<String>;
     // Automatically calls: my_service_test
 
-    #[rpc(name = "custom_name")]  // Can still override
+    #[rpc(name = "custom_name")] // Can still override
     fn another_test(&mut self, s: &str) -> Result<i32>;
     // Calls: custom_name (not my_service_another_test)
 }

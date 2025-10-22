@@ -1,8 +1,8 @@
-use serde_json::Value;
-use crate::error::{SearpcError, Result};
+use crate::error::{Result, SearpcError};
 use crate::protocol::{RpcRequest, RpcResponse};
 use crate::transport::Transport;
 use crate::types::Arg;
+use serde_json::Value;
 
 /// Searpc RPC Client
 ///
@@ -39,30 +39,27 @@ impl<T: Transport> SearpcClient<T> {
     /// Call function expecting int return type
     pub fn call_int(&mut self, function_name: &str, args: Vec<Arg>) -> Result<i32> {
         let value = self.call(function_name, args)?;
-        value.as_i64()
+        value
+            .as_i64()
             .and_then(|v| i32::try_from(v).ok())
-            .ok_or_else(|| SearpcError::TypeError(
-                format!("Expected int, got: {:?}", value)
-            ))
+            .ok_or_else(|| SearpcError::TypeError(format!("Expected int, got: {:?}", value)))
     }
 
     /// Call function expecting int64 return type
     pub fn call_int64(&mut self, function_name: &str, args: Vec<Arg>) -> Result<i64> {
         let value = self.call(function_name, args)?;
-        value.as_i64()
-            .ok_or_else(|| SearpcError::TypeError(
-                format!("Expected int64, got: {:?}", value)
-            ))
+        value
+            .as_i64()
+            .ok_or_else(|| SearpcError::TypeError(format!("Expected int64, got: {:?}", value)))
     }
 
     /// Call function expecting string return type
     pub fn call_string(&mut self, function_name: &str, args: Vec<Arg>) -> Result<String> {
         let value = self.call(function_name, args)?;
-        value.as_str()
+        value
+            .as_str()
             .map(|s| s.to_string())
-            .ok_or_else(|| SearpcError::TypeError(
-                format!("Expected string, got: {:?}", value)
-            ))
+            .ok_or_else(|| SearpcError::TypeError(format!("Expected string, got: {:?}", value)))
     }
 
     /// Call function expecting object return type (returns JSON Value)
@@ -71,9 +68,10 @@ impl<T: Transport> SearpcClient<T> {
         if value.is_object() || value.is_null() {
             Ok(value)
         } else {
-            Err(SearpcError::TypeError(
-                format!("Expected object, got: {:?}", value)
-            ))
+            Err(SearpcError::TypeError(format!(
+                "Expected object, got: {:?}",
+                value
+            )))
         }
     }
 
@@ -86,11 +84,10 @@ impl<T: Transport> SearpcClient<T> {
             return Ok(Vec::new());
         }
 
-        value.as_array()
+        value
+            .as_array()
             .map(|arr| arr.clone())
-            .ok_or_else(|| SearpcError::TypeError(
-                format!("Expected array, got: {:?}", value)
-            ))
+            .ok_or_else(|| SearpcError::TypeError(format!("Expected array, got: {:?}", value)))
     }
 
     /// Call function expecting JSON return type
@@ -116,22 +113,18 @@ mod tests {
 
     #[test]
     fn test_call_int() {
-        let transport = mock_transport(
-            r#"["searpc_strlen","hello"]"#,
-            r#"{"ret": 5}"#,
-        );
+        let transport = mock_transport(r#"["searpc_strlen","hello"]"#, r#"{"ret": 5}"#);
 
         let mut client = SearpcClient::new(transport);
-        let result = client.call_int("searpc_strlen", vec!["hello".into()]).unwrap();
+        let result = client
+            .call_int("searpc_strlen", vec!["hello".into()])
+            .unwrap();
         assert_eq!(result, 5);
     }
 
     #[test]
     fn test_call_string() {
-        let transport = mock_transport(
-            r#"["get_version"]"#,
-            r#"{"ret": "1.0.0"}"#,
-        );
+        let transport = mock_transport(r#"["get_version"]"#, r#"{"ret": "1.0.0"}"#);
 
         let mut client = SearpcClient::new(transport);
         let result = client.call_string("get_version", vec![]).unwrap();

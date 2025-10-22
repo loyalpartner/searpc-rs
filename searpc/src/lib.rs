@@ -148,41 +148,41 @@
 //! - **14 unit tests** (all passing)
 //! - **100% C compatibility** (verified with demo server)
 
-pub mod protocol;
-pub mod types;
 pub mod client;
 pub mod error;
-pub mod transport;
+pub mod protocol;
 pub mod tcp_transport;
+pub mod transport;
+pub mod types;
 
 #[cfg(unix)]
 pub mod unix_transport;
 
 // Async support (optional, enabled by default)
 #[cfg(feature = "async")]
-pub mod async_transport;
-#[cfg(feature = "async")]
 pub mod async_client;
 #[cfg(feature = "async")]
 pub mod async_tcp_transport;
+#[cfg(feature = "async")]
+pub mod async_transport;
 
-pub use protocol::{RpcRequest, RpcResponse};
-pub use types::{Arg, IntoArg};
 pub use client::SearpcClient;
-pub use error::{SearpcError, Result};
-pub use transport::Transport;
+pub use error::{Result, SearpcError};
+pub use protocol::{RpcRequest, RpcResponse};
 pub use tcp_transport::TcpTransport;
+pub use transport::Transport;
+pub use types::{Arg, IntoArg};
 
 #[cfg(unix)]
 pub use unix_transport::UnixSocketTransport;
 
 // Async exports
 #[cfg(feature = "async")]
-pub use async_transport::AsyncTransport;
-#[cfg(feature = "async")]
 pub use async_client::AsyncSearpcClient;
 #[cfg(feature = "async")]
 pub use async_tcp_transport::AsyncTcpTransport;
+#[cfg(feature = "async")]
+pub use async_transport::AsyncTransport;
 
 // Proc-macro exports
 #[cfg(feature = "macro")]

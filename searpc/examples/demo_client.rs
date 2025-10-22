@@ -11,8 +11,7 @@
 ///! ```bash
 ///! cargo run --example demo_client
 ///! ```
-
-use searpc::{SearpcClient, TcpTransport, Arg};
+use searpc::{Arg, SearpcClient, TcpTransport};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Connecting to searpc demo server at 127.0.0.1:12345...");
@@ -46,9 +45,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client2 = SearpcClient::new(transport2);
 
     let args2 = vec![
-        Arg::int(4),           // count
-        Arg::int(11),          // len
-        Arg::string("A rpc test."),  // str
+        Arg::int(4),                // count
+        Arg::int(11),               // len
+        Arg::string("A rpc test."), // str
     ];
 
     match client2.call_objlist("searpc_objlisttest", args2) {

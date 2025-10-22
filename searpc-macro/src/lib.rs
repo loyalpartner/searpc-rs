@@ -33,11 +33,8 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{
-    parse_macro_input, FnArg, ItemTrait,
-    PatType, ReturnType, TraitItem, TraitItemFn, Type,
-};
 use syn::parse::Parser;
+use syn::{parse_macro_input, FnArg, ItemTrait, PatType, ReturnType, TraitItem, TraitItemFn, Type};
 
 /// Main procedural macro for generating RPC client implementations
 ///
@@ -122,7 +119,10 @@ fn parse_rpc_config(attrs: proc_macro2::TokenStream) -> syn::Result<RpcConfig> {
 }
 
 /// Generate the RPC implementation for a trait
-fn generate_rpc_impl(trait_def: &ItemTrait, attrs: proc_macro2::TokenStream) -> syn::Result<TokenStream> {
+fn generate_rpc_impl(
+    trait_def: &ItemTrait,
+    attrs: proc_macro2::TokenStream,
+) -> syn::Result<TokenStream> {
     let trait_name = &trait_def.ident;
     let trait_generics = &trait_def.generics;
     let trait_vis = &trait_def.vis;
@@ -185,7 +185,10 @@ fn generate_rpc_impl(trait_def: &ItemTrait, attrs: proc_macro2::TokenStream) -> 
 }
 
 /// Generate implementation for a single RPC method
-fn generate_method_impl(method: &TraitItemFn, config: &RpcConfig) -> syn::Result<proc_macro2::TokenStream> {
+fn generate_method_impl(
+    method: &TraitItemFn,
+    config: &RpcConfig,
+) -> syn::Result<proc_macro2::TokenStream> {
     // Determine RPC function name
     let rpc_name = determine_rpc_name(method, config)?;
 
@@ -270,7 +273,9 @@ fn try_extract_method_name(attrs: &[syn::Attribute]) -> syn::Result<Option<Strin
 }
 
 /// Extract function arguments (excluding self)
-fn extract_args(inputs: &syn::punctuated::Punctuated<FnArg, syn::token::Comma>) -> syn::Result<Vec<ArgInfo>> {
+fn extract_args(
+    inputs: &syn::punctuated::Punctuated<FnArg, syn::token::Comma>,
+) -> syn::Result<Vec<ArgInfo>> {
     let mut args = Vec::new();
 
     for input in inputs {
@@ -349,7 +354,9 @@ fn extract_result_type(ty: &Type) -> syn::Result<&Type> {
 }
 
 /// Match return type and generate appropriate call method
-fn match_return_type(ty: &Type) -> syn::Result<(proc_macro2::TokenStream, proc_macro2::TokenStream)> {
+fn match_return_type(
+    ty: &Type,
+) -> syn::Result<(proc_macro2::TokenStream, proc_macro2::TokenStream)> {
     // Check for primitive types
     if is_type(ty, "String") {
         return Ok((quote!(call_string), quote!(Ok(result))));

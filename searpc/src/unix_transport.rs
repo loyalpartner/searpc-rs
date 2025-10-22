@@ -1,3 +1,5 @@
+use crate::error::{Result, SearpcError};
+use crate::transport::Transport;
 ///! Unix Domain Socket transport with 32-bit length header
 ///!
 ///! This matches the production protocol used by Seafile:
@@ -20,12 +22,9 @@
 ///! ```json
 ///! {"ret": value, "err_code": code, "err_msg": msg}
 ///! ```
-
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::path::Path;
-use crate::error::{SearpcError, Result};
-use crate::transport::Transport;
 
 /// Unix Domain Socket transport
 ///
@@ -53,16 +52,16 @@ impl UnixSocketTransport {
 
     /// Read exactly n bytes
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
-        self.stream.read_exact(buf).map_err(|e| {
-            SearpcError::TransportError(format!("Read failed: {}", e))
-        })
+        self.stream
+            .read_exact(buf)
+            .map_err(|e| SearpcError::TransportError(format!("Read failed: {}", e)))
     }
 
     /// Write all bytes
     fn write_all(&mut self, buf: &[u8]) -> Result<()> {
-        self.stream.write_all(buf).map_err(|e| {
-            SearpcError::TransportError(format!("Write failed: {}", e))
-        })
+        self.stream
+            .write_all(buf)
+            .map_err(|e| SearpcError::TransportError(format!("Write failed: {}", e)))
     }
 
     /// Send a packet with service wrapper
@@ -90,7 +89,7 @@ impl UnixSocketTransport {
 
         if len == 0 {
             return Err(SearpcError::TransportError(
-                "Received packet with zero length".to_string()
+                "Received packet with zero length".to_string(),
             ));
         }
 
