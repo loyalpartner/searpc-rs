@@ -233,6 +233,7 @@ dependencies = [
  "anyhow",
  "clap",
  "searpc",
+ "searpc-macro",
  "serde",
  "serde_json",
 ]

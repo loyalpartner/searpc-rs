@@ -360,10 +360,37 @@ fn match_return_type(ty: &Type) -> syn::Result<(proc_macro2::TokenStream, proc_m
     if is_type(ty, "i64") {
         return Ok((quote!(call_int64), quote!(Ok(result))));
     }
+    if is_type(ty, "bool") {
+        return Ok((quote!(call_int), quote!(Ok(result != 0))));
+    }
 
-    // Check for Vec<T>
+    // Check for Option<T> and Vec<T>
     if let Type::Path(type_path) = ty {
         if let Some(segment) = type_path.path.segments.last() {
+            // Check for Option<T>
+            if segment.ident == "Option" {
+                if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+                    if let Some(syn::GenericArgument::Type(_inner)) = args.args.first() {
+                        // Option<T> - use call_object and return None on null
+                        return Ok((
+                            quote!(call_object),
+                            quote! {
+                                if result.is_null() {
+                                    Ok(None)
+                                } else {
+                                    ::serde_json::from_value(result)
+                                        .map(|v| Some(v))
+                                        .map_err(|e| ::searpc::SearpcError::TypeError(
+                                            format!("Failed to deserialize Option: {}", e)
+                                        ))
+                                }
+                            },
+                        ));
+                    }
+                }
+            }
+
+            // Check for Vec<T>
             if segment.ident == "Vec" {
                 if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
                     if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
@@ -374,7 +401,7 @@ fn match_return_type(ty: &Type) -> syn::Result<(proc_macro2::TokenStream, proc_m
                                 result.into_iter()
                                     .map(|v| ::serde_json::from_value(v)
                                         .map_err(|e| ::searpc::SearpcError::TypeError(
-                                            format!("Failed to deserialize: {}", e)
+                                            format!("Failed to deserialize Vec element: {}", e)
                                         )))
                                     .collect::<::searpc::Result<Vec<#inner>>>()
                             },

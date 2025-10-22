@@ -30,4 +30,12 @@ pub enum SearpcError {
     /// Type conversion error
     #[error("Type error: {0}")]
     TypeError(String),
+
+    /// IO error
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+
+    /// Environment variable error
+    #[error("Environment variable error: {0}")]
+    EnvVarError(#[from] std::env::VarError),
 }
