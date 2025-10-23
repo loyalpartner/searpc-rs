@@ -13,6 +13,7 @@ categories = ["network-programming", "api-bindings"]
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tracing = "0.1"
 
 # Async support (optional, enabled by default)
 tokio = { workspace = true, optional = true }

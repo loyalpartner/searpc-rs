@@ -15,8 +15,11 @@ pub struct Repo {
 /// Clone task information
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CloneTask {
+    #[serde(default)]
     pub repo_id: String,
+    #[serde(default)]
     pub repo_name: String,
+    #[serde(default)]
     pub state: String,
     #[serde(default)]
     pub error: i32,
@@ -25,7 +28,9 @@ pub struct CloneTask {
 /// Sync task information
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SyncTask {
+    #[serde(default)]
     pub repo_id: String,
+    #[serde(default)]
     pub state: String,
     #[serde(default)]
     pub error: i32,
@@ -95,6 +100,62 @@ pub trait SeafileRpc {
 
     /// Set configuration value
     fn set_config(&mut self, key: &str, value: &str) -> Result<i32>;
+
+    /// Set configuration value as integer
+    fn set_config_int(&mut self, key: &str, value: i32) -> Result<i32>;
+
+    /// Remove a repository (destroy it)
+    #[rpc(name = "seafile_destroy_repo")]
+    fn remove_repo(&mut self, repo_id: &str) -> Result<i32>;
+
+    /// Download a repository from server
+    ///
+    /// # Arguments
+    /// * `repo_id` - Repository ID
+    /// * `repo_version` - Repository version
+    /// * `repo_name` - Repository name
+    /// * `worktree` - Local directory path
+    /// * `token` - Clone token from server
+    /// * `passwd` - Repository password (None for non-encrypted repos)
+    /// * `magic` - Encryption magic (None for non-encrypted repos)
+    /// * `email` - User email
+    /// * `random_key` - Random key for encrypted repos (None for non-encrypted)
+    /// * `enc_version` - Encryption version
+    /// * `more_info` - Additional info as JSON string
+    #[allow(clippy::too_many_arguments)]
+    fn download(
+        &mut self,
+        repo_id: &str,
+        repo_version: i32,
+        repo_name: &str,
+        worktree: &str,
+        token: &str,
+        passwd: Option<&str>,
+        magic: Option<&str>,
+        email: &str,
+        random_key: Option<&str>,
+        enc_version: i32,
+        more_info: &str,
+    ) -> Result<Option<String>>;
+
+    /// Clone a repository into existing folder
+    ///
+    /// Same arguments as download()
+    #[allow(clippy::too_many_arguments)]
+    fn clone(
+        &mut self,
+        repo_id: &str,
+        repo_version: i32,
+        repo_name: &str,
+        worktree: &str,
+        token: &str,
+        passwd: Option<&str>,
+        magic: Option<&str>,
+        email: &str,
+        random_key: Option<&str>,
+        enc_version: i32,
+        more_info: &str,
+    ) -> Result<Option<String>>;
 
     /// Shutdown the seafile daemon
     fn shutdown(&mut self) -> Result<i32>;

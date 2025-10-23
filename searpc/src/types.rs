@@ -114,6 +114,24 @@ impl IntoArg for Value {
     }
 }
 
+impl IntoArg for Option<&str> {
+    fn into_arg(self) -> Arg {
+        match self {
+            Some(s) => Arg::String(s.to_string()),
+            None => Arg::Null,
+        }
+    }
+}
+
+impl IntoArg for Option<i32> {
+    fn into_arg(self) -> Arg {
+        match self {
+            Some(v) => Arg::Int(v),
+            None => Arg::Null,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -3,6 +3,7 @@ use crate::protocol::{RpcRequest, RpcResponse};
 use crate::transport::Transport;
 use crate::types::Arg;
 use serde_json::Value;
+use tracing::debug;
 
 /// Searpc RPC Client
 ///
@@ -21,6 +22,7 @@ impl<T: Transport> SearpcClient<T> {
         // 1. Create request
         let request = RpcRequest::with_args(function_name, args);
         let request_json = request.to_json()?;
+        debug!("RPC request: {}", request_json);
 
         // 2. Send via transport
         let response_bytes = self.transport.send(request_json.as_bytes())?;
@@ -29,6 +31,7 @@ impl<T: Transport> SearpcClient<T> {
         let response_str = std::str::from_utf8(&response_bytes).map_err(|e| {
             SearpcError::InvalidResponse(format!("Response is not valid UTF-8: {}", e))
         })?;
+        debug!("RPC response: {}", response_str);
 
         let response = RpcResponse::from_json(response_str)?;
 
