@@ -4,7 +4,7 @@ use searpc::{SearpcClient, UnixSocketTransport};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, trace, warn};
 
 mod config;
 mod http_client;
@@ -317,10 +317,15 @@ fn main() -> Result<()> {
         Commands::Start => unreachable!(),
 
         Commands::List { json } => {
+            debug!("Executing list command");
             let socket_path = datadir_path.join("seafile.sock");
+            trace!(socket = %socket_path.display(), "Connecting to RPC server");
             let transport = UnixSocketTransport::connect(&socket_path, "seafile-rpcserver")?;
             let mut client = SearpcClient::new(transport);
+
+            debug!("Fetching repository list");
             let repos = client.get_repo_list(-1, -1)?;
+            info!(count = repos.len(), "Retrieved {} repositories", repos.len());
 
             if json {
                 println!("{}", serde_json::to_string_pretty(&repos)?);
@@ -341,13 +346,17 @@ fn main() -> Result<()> {
             tfa,
             user_config,
         } => {
+            debug!("Executing list-remote command");
             let user_cfg = UserConfig::load(user_config.as_deref())?;
             let server_url = server.or(user_cfg.server).context("Server URL required")?;
             let username = username.or(user_cfg.user).context("Username required")?;
+            debug!(server = %server_url, user = %username, "Resolved server and user");
 
             let token = if let Some(t) = token.or(user_cfg.token) {
+                debug!("Using provided token");
                 t
             } else {
+                debug!("No token provided, authenticating");
                 let password = if let Some(p) = password {
                     p
                 } else {
@@ -361,7 +370,9 @@ fn main() -> Result<()> {
             };
 
             let http_client = SeafileHttpClient::new(&server_url);
+            debug!("Fetching remote repository list");
             let repos = http_client.list_repos(&token)?;
+            info!(count = repos.len(), "Retrieved {} remote repositories", repos.len());
 
             if json {
                 println!("{}", serde_json::to_string_pretty(&repos)?);
@@ -374,15 +385,20 @@ fn main() -> Result<()> {
         }
 
         Commands::Status => {
+            debug!("Executing status command");
             let socket_path = datadir_path.join("seafile.sock");
+            trace!(socket = %socket_path.display(), "Connecting to RPC server");
             let transport = UnixSocketTransport::connect(&socket_path, "seafile-rpcserver")?;
             let mut client = SearpcClient::new(transport);
 
             // Get clone tasks
+            debug!("Fetching clone tasks");
             let tasks = client.get_clone_tasks()?;
+            trace!(count = tasks.len(), "Found {} clone tasks", tasks.len());
             println!("# {:<50}\t{:<20}\t{:<20}", "Name", "Status", "Progress");
 
             for task in tasks {
+                trace!(repo = %task.repo_name, state = %task.state, "Processing clone task");
                 match task.state.as_str() {
                     "fetch" => {
                         if let Ok(tx_task) = client.find_transfer_task(&task.repo_id) {
@@ -392,6 +408,7 @@ fn main() -> Result<()> {
                                 0.0
                             };
                             let rate = tx_task.rate as f64 / 1024.0;
+                            debug!(repo = %task.repo_name, progress = %format!("{:.1}%", progress), rate = %format!("{:.1}KB/s", rate), "Download in progress");
                             println!(
                                 "{:<50}\t{:<20}\t{:.1}%, {:.1}KB/s",
                                 task.repo_name, "downloading", progress, rate
@@ -400,9 +417,12 @@ fn main() -> Result<()> {
                     }
                     "error" => {
                         let err = client.sync_error_id_to_str(task.error)?;
+                        error!(repo = %task.repo_name, error = %err, "Clone task error");
                         println!("{:<50}\t{:<20}\t{:<20}", task.repo_name, "error", err);
                     }
-                    "done" => {}
+                    "done" => {
+                        trace!(repo = %task.repo_name, "Clone task completed");
+                    }
                     _ => {
                         println!("{:<50}\t{:<20}", task.repo_name, task.state);
                     }
@@ -410,10 +430,14 @@ fn main() -> Result<()> {
             }
 
             // Get repo sync status
+            debug!("Fetching repository sync status");
             let repos = client.get_repo_list(-1, -1)?;
+            trace!(count = repos.len(), "Found {} repositories", repos.len());
+
             for repo in repos {
                 let auto_sync = client.is_auto_sync_enabled()?;
                 if !auto_sync || !repo.auto_sync {
+                    trace!(repo = %repo.name, "Auto sync disabled");
                     println!("{:<50}\t{:<20}", repo.name, "auto sync disabled");
                     continue;
                 }
@@ -428,6 +452,7 @@ fn main() -> Result<()> {
                                     0.0
                                 };
                                 let rate = tx_task.rate as f64 / 1024.0;
+                                debug!(repo = %repo.name, state = %task.state, progress = %format!("{:.1}%", progress), "Transfer in progress");
                                 println!(
                                     "{:<50}\t{:<20}\t{:.1}%, {:.1}KB/s",
                                     repo.name, task.state, progress, rate
@@ -436,13 +461,16 @@ fn main() -> Result<()> {
                         }
                         "error" => {
                             let err = client.sync_error_id_to_str(task.error)?;
+                            error!(repo = %repo.name, error = %err, "Sync error");
                             println!("{:<50}\t{:<20}\t{:<20}", repo.name, "error", err);
                         }
                         _ => {
+                            trace!(repo = %repo.name, state = %task.state, "Sync state");
                             println!("{:<50}\t{:<20}", repo.name, task.state);
                         }
                     },
                     Ok(None) | Err(_) => {
+                        trace!(repo = %repo.name, "Waiting for sync");
                         println!("{:<50}\t{:<20}", repo.name, "waiting for sync");
                     }
                 }
@@ -460,7 +488,9 @@ fn main() -> Result<()> {
             libpasswd,
             user_config,
         } => {
+            debug!(library = %library, "Executing download command");
             let socket_path = datadir_path.join("seafile.sock");
+            trace!(socket = %socket_path.display(), "Connecting to RPC server");
             let transport = UnixSocketTransport::connect(&socket_path, "seafile-rpcserver")?;
             let mut client = SearpcClient::new(transport);
 
@@ -491,9 +521,11 @@ fn main() -> Result<()> {
             libpasswd,
             user_config,
         } => {
+            debug!(library_name = %libraryname, "Executing download-by-name command");
             let user_cfg = UserConfig::load(user_config.as_deref())?;
             let server_url = server.or(user_cfg.server).context("Server URL required")?;
             let username = username.or(user_cfg.user).context("Username required")?;
+            debug!(server = %server_url, user = %username, "Resolved server and user");
 
             let token = get_or_create_token(
                 &server_url,
@@ -509,13 +541,16 @@ fn main() -> Result<()> {
             let http_client = SeafileHttpClient::new(&server_url);
             let repos = http_client.list_repos(&token)?;
 
+            debug!("Searching for library by name: {}", libraryname);
             let library_id = repos
                 .iter()
                 .find(|r| r.name == libraryname)
                 .map(|r| r.id.clone())
                 .context("Library not found")?;
+            info!(library_id = %library_id, library_name = %libraryname, "Found library");
 
             let socket_path = datadir_path.join("seafile.sock");
+            trace!(socket = %socket_path.display(), "Connecting to RPC server");
             let transport = UnixSocketTransport::connect(&socket_path, "seafile-rpcserver")?;
             let mut client = SearpcClient::new(transport);
 
@@ -546,11 +581,14 @@ fn main() -> Result<()> {
             libpasswd,
             user_config,
         } => {
+            debug!(library = %library, folder = %folder.display(), "Executing sync command");
             if !folder.exists() {
+                error!(folder = %folder.display(), "Local directory does not exist");
                 anyhow::bail!("Local directory does not exist");
             }
 
             let socket_path = datadir_path.join("seafile.sock");
+            trace!(socket = %socket_path.display(), "Connecting to RPC server");
             let transport = UnixSocketTransport::connect(&socket_path, "seafile-rpcserver")?;
             let mut client = SearpcClient::new(transport);
 
@@ -571,11 +609,14 @@ fn main() -> Result<()> {
         }
 
         Commands::Desync { folder } => {
+            debug!(folder = %folder.display(), "Executing desync command");
             let socket_path = datadir_path.join("seafile.sock");
+            trace!(socket = %socket_path.display(), "Connecting to RPC server");
             let transport = UnixSocketTransport::connect(&socket_path, "seafile-rpcserver")?;
             let mut client = SearpcClient::new(transport);
 
             let repo_path = folder.canonicalize()?;
+            debug!(canonical_path = %repo_path.display(), "Resolved folder path");
             let repos = client.get_repo_list(-1, -1)?;
 
             let repo = repos
@@ -583,8 +624,10 @@ fn main() -> Result<()> {
                 .find(|r| PathBuf::from(&r.worktree) == repo_path)
                 .context("Not a library")?;
 
+            info!(repo_id = %repo.id, repo_name = %repo.name, "Desynchronizing library");
             println!("Desynchronize {}", repo.name);
             client.remove_repo(&repo.id)?;
+            debug!("Library desynchronized successfully");
         }
 
         Commands::Create {
@@ -598,9 +641,11 @@ fn main() -> Result<()> {
             tfa,
             user_config,
         } => {
+            debug!(name = %name, encrypted = libpasswd.is_some(), "Executing create command");
             let user_cfg = UserConfig::load(user_config.as_deref())?;
             let server_url = server.or(user_cfg.server).context("Server URL required")?;
             let username = username.or(user_cfg.user).context("Username required")?;
+            debug!(server = %server_url, user = %username, "Resolved server and user");
 
             let token = get_or_create_token(
                 &server_url,
@@ -615,31 +660,47 @@ fn main() -> Result<()> {
 
             let http_client = SeafileHttpClient::new(&server_url);
             let repo_id = http_client.create_repo(&token, &name, &desc, libpasswd.as_deref())?;
+            info!(repo_id = %repo_id, name = %name, "Repository created");
             println!("{}", repo_id);
         }
 
         Commands::Config { key, value } => {
+            debug!(key = %key, has_value = value.is_some(), "Executing config command");
             let socket_path = datadir_path.join("seafile.sock");
+            trace!(socket = %socket_path.display(), "Connecting to RPC server");
             let transport = UnixSocketTransport::connect(&socket_path, "seafile-rpcserver")?;
             let mut client = SearpcClient::new(transport);
 
             if let Some(val) = value {
+                debug!(key = %key, value = %val, "Setting config value");
                 client.set_config(&key, &val)?;
+                info!(key = %key, value = %val, "Config value set");
                 println!("Set {} = {}", key, val);
             } else {
+                debug!(key = %key, "Getting config value");
                 let val = client.get_config(&key)?;
+                trace!(key = %key, value = %val, "Retrieved config value");
                 println!("{} = {}", key, val);
             }
         }
 
         Commands::Stop => {
+            debug!("Executing stop command");
             let socket_path = datadir_path.join("seafile.sock");
+            trace!(socket = %socket_path.display(), "Connecting to RPC server");
             let transport = UnixSocketTransport::connect(&socket_path, "seafile-rpcserver")?;
             let mut client = SearpcClient::new(transport);
 
+            info!("Sending shutdown request to daemon");
             match client.shutdown() {
-                Ok(_) => println!("Seafile daemon stopped"),
-                Err(_) => println!("Seafile daemon stopping..."),
+                Ok(_) => {
+                    info!("Seafile daemon stopped");
+                    println!("Seafile daemon stopped");
+                }
+                Err(e) => {
+                    debug!(error = %e, "Shutdown returned error (expected during shutdown)");
+                    println!("Seafile daemon stopping...");
+                }
             }
         }
     }
@@ -941,6 +1002,7 @@ fn handle_sync<T: searpc::Transport>(
     let http_client = SeafileHttpClient::new(server_url);
     debug!("Getting download info for repo: {}", repo_id);
     let download_info = http_client.get_repo_download_info(&token, repo_id)?;
+    debug!("download_info: {}", serde_json::to_string_pretty(&download_info)?);
 
     let is_encrypted = !download_info.encrypted.is_empty() && download_info.encrypted != "0";
 

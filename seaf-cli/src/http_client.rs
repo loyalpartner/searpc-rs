@@ -33,7 +33,7 @@ pub struct RepoInfo {
     pub encrypted: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RepoDownloadInfo {
     pub token: String,
     pub email: String,
