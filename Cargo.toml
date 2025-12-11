@@ -4,7 +4,7 @@ resolver = "2"
 
 # 统一版本和元数据管理
 [workspace.package]
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Lee <lee@example.com>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/loyalpartner/searpc-rs"
@@ -26,8 +26,8 @@ quote = "1.0"
 proc-macro2 = "1.0"
 
 # 内部依赖（workspace 成员）
-searpc-macro = { path = "./searpc-macro", version = "0.1.1" }
-searpc = { path = "./searpc", version = "0.1.1", default-features = false }
+searpc-macro = { path = "./searpc-macro", version = "0.1.2" }
+searpc = { path = "./searpc", version = "0.1.2", default-features = false }
 
 # cargo-release 配置
 [workspace.metadata.release]
