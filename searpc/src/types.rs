@@ -132,6 +132,54 @@ impl IntoArg for Option<i32> {
     }
 }
 
+impl IntoArg for Option<i64> {
+    fn into_arg(self) -> Arg {
+        match self {
+            Some(v) => Arg::Int64(v),
+            None => Arg::Null,
+        }
+    }
+}
+
+impl IntoArg for Option<String> {
+    fn into_arg(self) -> Arg {
+        match self {
+            Some(s) => Arg::String(s),
+            None => Arg::Null,
+        }
+    }
+}
+
+/// Trait for types that can be expanded into multiple RPC arguments
+///
+/// This trait is used by the `#[rpc(expand)]` macro to expand a struct's
+/// fields into individual RPC arguments.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use searpc::{ExpandArgs, Arg};
+///
+/// struct CreateRepoRequest {
+///     name: String,
+///     desc: String,
+///     owner: String,
+/// }
+///
+/// impl ExpandArgs for CreateRepoRequest {
+///     fn expand_args(self) -> Vec<Arg> {
+///         vec![
+///             self.name.into_arg(),
+///             self.desc.into_arg(),
+///             self.owner.into_arg(),
+///         ]
+///     }
+/// }
+/// ```
+pub trait ExpandArgs {
+    fn expand_args(self) -> Vec<Arg>;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,5 +205,29 @@ mod tests {
 
         let json = serde_json::to_string(&args).unwrap();
         assert_eq!(json, r#"[42,null,"test"]"#);
+    }
+
+    #[test]
+    fn test_expand_args() {
+        // Manual implementation to verify the trait works
+        struct TestRequest {
+            name: String,
+            count: i32,
+        }
+
+        impl ExpandArgs for TestRequest {
+            fn expand_args(self) -> Vec<Arg> {
+                vec![self.name.into_arg(), self.count.into_arg()]
+            }
+        }
+
+        let req = TestRequest {
+            name: "test".to_string(),
+            count: 42,
+        };
+
+        let args = req.expand_args();
+        let json = serde_json::to_string(&args).unwrap();
+        assert_eq!(json, r#"["test",42]"#);
     }
 }

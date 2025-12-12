@@ -1,5 +1,5 @@
 //! Minimal test for the #[rpc] macro with prefix
-use searpc::{rpc, Result, SearpcClient, TcpTransport};
+use searpc::{rpc, ExpandArgs, Result, SearpcClient, TcpTransport};
 
 // Using prefix - no need to repeat "my_service_" everywhere!
 #[rpc(prefix = "my_service")]
@@ -10,6 +10,21 @@ trait SimpleRpc {
     #[rpc(name = "custom_name")] // Can still override
     fn another_test(&mut self, s: &str) -> Result<i32>;
     // Calls: custom_name (not my_service_another_test)
+}
+
+// Using expand - struct fields become RPC arguments
+#[derive(ExpandArgs)]
+struct CreateRequest {
+    name: String,
+    count: i32,
+    desc: Option<String>, // Option supported
+}
+
+#[rpc(prefix = "my_service")]
+trait ExpandRpc {
+    #[rpc(expand)]
+    fn create(&mut self, req: CreateRequest) -> Result<String>;
+    // Calls: my_service_create(name, count)
 }
 
 fn main() {
@@ -23,4 +38,20 @@ fn main() {
     if let Ok(result) = client.test(42) {
         println!("Result: {}", result);
     }
+
+    // Test expand
+    let req = CreateRequest {
+        name: "test".to_string(),
+        count: 10,
+        desc: Some("description".to_string()),
+    };
+    let _ = client.create(req);
+
+    // Test expand with None
+    let req2 = CreateRequest {
+        name: "test2".to_string(),
+        count: 20,
+        desc: None, // will become Arg::Null
+    };
+    let _ = client.create(req2);
 }

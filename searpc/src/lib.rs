@@ -171,7 +171,7 @@ pub use error::{Result, SearpcError};
 pub use protocol::{RpcRequest, RpcResponse};
 pub use tcp_transport::TcpTransport;
 pub use transport::Transport;
-pub use types::{Arg, IntoArg};
+pub use types::{Arg, ExpandArgs, IntoArg};
 
 #[cfg(unix)]
 pub use unix_transport::UnixSocketTransport;
@@ -186,4 +186,4 @@ pub use async_transport::AsyncTransport;
 
 // Proc-macro exports
 #[cfg(feature = "macro")]
-pub use searpc_macro::rpc;
+pub use searpc_macro::{rpc, ExpandArgs};

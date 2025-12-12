@@ -34,7 +34,10 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::parse::Parser;
-use syn::{parse_macro_input, FnArg, ItemTrait, PatType, ReturnType, TraitItem, TraitItemFn, Type};
+use syn::{
+    parse_macro_input, DeriveInput, FnArg, ItemTrait, PatType, ReturnType, TraitItem, TraitItemFn,
+    Type,
+};
 
 /// Main procedural macro for generating RPC client implementations
 ///
@@ -73,6 +76,27 @@ use syn::{parse_macro_input, FnArg, ItemTrait, PatType, ReturnType, TraitItem, T
 /// trait MyRpc {
 ///     #[rpc(name = "remote_function_name")]
 ///     fn local_name(&mut self, arg: Type) -> Result<ReturnType>;
+/// }
+/// ```
+///
+/// ## Expand struct arguments
+///
+/// Use `#[derive(ExpandArgs)]` and `#[rpc(expand)]` to pass a struct
+/// whose fields are expanded into individual RPC arguments:
+///
+/// ```rust,ignore
+/// #[derive(ExpandArgs)]
+/// struct CreateRepoRequest {
+///     name: String,
+///     desc: String,
+///     owner: String,
+/// }
+///
+/// #[rpc(prefix = "seafile")]
+/// trait SeafileRpc {
+///     #[rpc(expand)]
+///     fn create_repo(&mut self, req: CreateRepoRequest) -> Result<String>;
+///     // Calls: seafile_create_repo(name, desc, owner)
 /// }
 /// ```
 #[proc_macro_attribute]
@@ -189,8 +213,8 @@ fn generate_method_impl(
     method: &TraitItemFn,
     config: &RpcConfig,
 ) -> syn::Result<proc_macro2::TokenStream> {
-    // Determine RPC function name
-    let rpc_name = determine_rpc_name(method, config)?;
+    // Determine RPC function name and method config
+    let (rpc_name, method_config) = determine_rpc_config(method, config)?;
 
     // Parse parameters (skip self)
     let args = extract_args(&method.sig.inputs)?;
@@ -206,7 +230,8 @@ fn generate_method_impl(
         }
     };
 
-    let (call_expr, deserialize_expr) = generate_call_expression(return_type, &rpc_name, &args)?;
+    let (call_expr, deserialize_expr) =
+        generate_call_expression(return_type, &rpc_name, &args, method_config.expand)?;
 
     // Build the method implementation
     // Filter out #[rpc(...)] attributes to avoid duplication
@@ -226,50 +251,65 @@ fn generate_method_impl(
     })
 }
 
-/// Determine the RPC function name
+/// Determine the RPC function name and method config
 ///
-/// Priority:
+/// Priority for name:
 /// 1. Method-level #[rpc(name = "...")] if present
 /// 2. prefix + "_" + method_name if prefix configured
 /// 3. method_name as-is
-fn determine_rpc_name(method: &TraitItemFn, config: &RpcConfig) -> syn::Result<String> {
-    // Try to get explicit name from method attribute
-    if let Some(name) = try_extract_method_name(&method.attrs)? {
-        return Ok(name);
-    }
+fn determine_rpc_config(
+    method: &TraitItemFn,
+    config: &RpcConfig,
+) -> syn::Result<(String, MethodRpcConfig)> {
+    // Get method-level config
+    let method_config = try_extract_method_config(&method.attrs)?;
 
-    // Use prefix if configured
-    let method_name = method.sig.ident.to_string();
-    if let Some(prefix) = &config.prefix {
-        Ok(format!("{}_{}", prefix, method_name))
+    // Determine RPC name
+    let rpc_name = if let Some(name) = &method_config.name {
+        name.clone()
     } else {
-        Ok(method_name)
-    }
+        let method_name = method.sig.ident.to_string();
+        if let Some(prefix) = &config.prefix {
+            format!("{}_{}", prefix, method_name)
+        } else {
+            method_name
+        }
+    };
+
+    Ok((rpc_name, method_config))
 }
 
-/// Try to extract RPC name from method-level #[rpc(name = "...")]
-fn try_extract_method_name(attrs: &[syn::Attribute]) -> syn::Result<Option<String>> {
+/// Method-level RPC configuration
+struct MethodRpcConfig {
+    name: Option<String>,
+    expand: bool,
+}
+
+/// Try to extract RPC config from method-level #[rpc(...)]
+fn try_extract_method_config(attrs: &[syn::Attribute]) -> syn::Result<MethodRpcConfig> {
+    let mut config = MethodRpcConfig {
+        name: None,
+        expand: false,
+    };
+
     for attr in attrs {
         if attr.path().is_ident("rpc") {
-            let mut rpc_name = None;
-
             attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("name") {
                     let value = meta.value()?;
                     let lit: syn::LitStr = value.parse()?;
-                    rpc_name = Some(lit.value());
+                    config.name = Some(lit.value());
+                    Ok(())
+                } else if meta.path.is_ident("expand") {
+                    config.expand = true;
                     Ok(())
                 } else {
-                    Err(meta.error("expected `name`"))
+                    Err(meta.error("expected `name` or `expand`"))
                 }
             })?;
-
-            if let Some(name) = rpc_name {
-                return Ok(Some(name));
-            }
         }
     }
-    Ok(None)
+    Ok(config)
 }
 
 /// Extract function arguments (excluding self)
@@ -304,23 +344,44 @@ fn generate_call_expression(
     return_type: &Type,
     rpc_name: &str,
     args: &[ArgInfo],
+    expand: bool,
 ) -> syn::Result<(proc_macro2::TokenStream, proc_macro2::TokenStream)> {
     // Build args vector
-    let arg_conversions = args.iter().map(|arg| {
+    let args_vec = if expand {
+        // expand mode: expect exactly one struct argument, expand its fields
+        if args.len() != 1 {
+            return Err(syn::Error::new(
+                proc_macro2::Span::call_site(),
+                "expand mode requires exactly one struct argument",
+            ));
+        }
+        let arg = &args[0];
         let arg_ident = syn::Ident::new(&arg.name, proc_macro2::Span::call_site());
         let ty = &arg.ty;
 
-        // Type-based conversion to Arg
+        // Generate code that expands the struct fields at runtime
+        // The struct must implement ExpandArgs trait
         quote! {
-            {
-                let val = #arg_ident;
-                <#ty as ::searpc::IntoArg>::into_arg(val)
-            }
+            let args = <#ty as ::searpc::ExpandArgs>::expand_args(#arg_ident);
         }
-    });
+    } else {
+        // Normal mode: convert each argument
+        let arg_conversions = args.iter().map(|arg| {
+            let arg_ident = syn::Ident::new(&arg.name, proc_macro2::Span::call_site());
+            let ty = &arg.ty;
 
-    let args_vec = quote! {
-        let args = vec![#(#arg_conversions),*];
+            // Type-based conversion to Arg
+            quote! {
+                {
+                    let val = #arg_ident;
+                    <#ty as ::searpc::IntoArg>::into_arg(val)
+                }
+            }
+        });
+
+        quote! {
+            let args = vec![#(#arg_conversions),*];
+        }
     };
 
     // Parse Result<T> to extract T
@@ -439,4 +500,83 @@ fn is_type(ty: &Type, name: &str) -> bool {
         }
     }
     false
+}
+
+/// Derive macro for implementing ExpandArgs trait on structs
+///
+/// This macro automatically implements the `ExpandArgs` trait for a struct,
+/// allowing its fields to be expanded into RPC arguments.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use searpc_macro::ExpandArgs;
+///
+/// #[derive(ExpandArgs)]
+/// struct CreateRepoRequest {
+///     name: String,
+///     desc: String,
+///     owner: String,
+/// }
+///
+/// #[rpc]
+/// trait MyRpc {
+///     #[rpc(expand)]
+///     fn create_repo(&mut self, req: CreateRepoRequest) -> Result<String>;
+/// }
+/// ```
+#[proc_macro_derive(ExpandArgs)]
+pub fn derive_expand_args(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    match generate_expand_args_impl(&input) {
+        Ok(tokens) => tokens,
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+fn generate_expand_args_impl(input: &DeriveInput) -> syn::Result<TokenStream> {
+    let name = &input.ident;
+    let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    // Extract struct fields
+    let fields = match &input.data {
+        syn::Data::Struct(data) => match &data.fields {
+            syn::Fields::Named(fields) => &fields.named,
+            _ => {
+                return Err(syn::Error::new_spanned(
+                    input,
+                    "ExpandArgs only supports structs with named fields",
+                ))
+            }
+        },
+        _ => {
+            return Err(syn::Error::new_spanned(
+                input,
+                "ExpandArgs can only be derived for structs",
+            ))
+        }
+    };
+
+    // Generate field expansions
+    let field_expansions = fields.iter().map(|field| {
+        let field_name = field.ident.as_ref().unwrap();
+        let field_ty = &field.ty;
+        quote! {
+            <#field_ty as ::searpc::IntoArg>::into_arg(self.#field_name)
+        }
+    });
+
+    let expanded = quote! {
+        impl #impl_generics ::searpc::ExpandArgs for #name #ty_generics #where_clause {
+            fn expand_args(self) -> Vec<::searpc::Arg> {
+                vec![
+                    #(#field_expansions),*
+                ]
+            }
+        }
+    };
+
+    Ok(expanded.into())
 }
